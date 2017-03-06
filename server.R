@@ -9,7 +9,9 @@ require(dygraphs)
 require(httr)
 require(jsonlite)
 require(rjson)
-
+require(devtools)
+require(Rforecastio)
+require(darksky)
 
 shinyServer(function(input,output) {
   
@@ -96,6 +98,24 @@ shinyServer(function(input,output) {
     neat1<-fromJSON(neat)
     neat1$properties$items$availability
   }
+  prodprice<-function(prodid) {
+    
+    u<-"https://api.llbean.com/v1/products/"
+    p1<-prodid
+    e<-"?expand=images,items,prices"
+    
+    product<-paste(u,p1,e,sep="")
+    
+    raw <- GET(url=product, add_headers(key="X28o7rfOQ1QI8qAxYyk6B1qEh7mW2QJu"))
+    names(raw)
+    raw$status_code
+    content(raw)
+    head(raw$content)
+    neat<-rawToChar(raw$content)
+    neat1<-fromJSON(neat)
+    neat1$items[[nzchar(neat1$items)]]$prices[[1]]$price
+  }
+  
   
   prodprice1<-function(prodid1) {
     
@@ -164,6 +184,26 @@ shinyServer(function(input,output) {
     neat<-rawToChar(raw$content)
     neat1<-fromJSON(neat)
     neat1$items[[nzchar(neat1$items)]]$prices[[1]]$price
+  }
+  
+  prodimg<-function(prodid) {
+    
+    u<-"https://api.llbean.com/v1/products/"
+    p1<-prodid
+    e<-"?expand=images,items,prices"
+    
+    product<-paste(u,p1,e,sep="")
+    
+    raw <- GET(url=product, add_headers(key="X28o7rfOQ1QI8qAxYyk6B1qEh7mW2QJu"))
+    names(raw)
+    raw$status_code
+    content(raw)
+    head(raw$content)
+    neat<-rawToChar(raw$content)
+    neat1<-fromJSON(neat)
+    baseimage<-neat1$images[[1]]$path
+    width<-"?wid=200"
+    paste(baseimage,width)
   }
   
   
@@ -240,7 +280,23 @@ shinyServer(function(input,output) {
     width<-"?wid=200"
     paste(baseimage,width)
   }
+  weather<-function(lat,lon) {
+    
+    now<-get_current_forecast(lat,lon,units = "us", language = "en")
+    #current time
+    time<-now$currently$time
+    #current weather info
+    icon<-now$currently$icon
+    summ<-now$currently$summary
+    #current temp
+    temp<-now$currently$temperature
+    #current windspeed
+    wind<-now$currently$windSpeed
+    paste(time,icon,summ,temp,wind, sep=" ")
+    
+  }
   
+  output$temp <- renderText({weather(input$lat,input$lon)})
   output$result<-renderText({input$budget/quo(input$ticker1)})
   output$resultdesc<-renderText("The number of shares you can buy:")
   output$prices<-renderDygraph({msr(input$ticker1,input$ticker2,input$start_year)})
@@ -250,6 +306,8 @@ shinyServer(function(input,output) {
   output$chart2<-renderPlot(pv2(input$ticker2))
   output$div<-renderText({input$budget*divid(input$ticker1)*4})
   output$divdesc<-renderText("Dollars you will receive as annual dividends:")
+  output$bean<- renderText({prodprice(input$prodid)})
+  output$pic<- renderText({c('<img src="',prodimg(input$prodid),'">')})
   output$inv1<-renderText({beaninv1(input$itemid1)})
   output$bean1<-renderText({prodprice1(input$prodid1)})
   output$bean2<-renderText({prodprice2(input$prodid2)})
